@@ -5,6 +5,7 @@ import {
   updateShop,
   getUserShops,
   getShopById,
+  updateShopCover,
 } from "../controllers/shopController.js";
 import { upload } from "../middleware/uploadMiddleware.js";
 
@@ -14,5 +15,11 @@ router.post("/", authenticateUser, upload.single("logo"), createShop);
 router.put("/:shopId", authenticateUser, upload.single("logo"), updateShop);
 router.get("/me", authenticateUser, getUserShops);
 router.get("/:shopId", getShopById);
+router.put(
+  "/:shopId/cover",
+  authenticateUser,
+  upload.single("cover"),
+  updateShopCover
+);
 
 export default router;

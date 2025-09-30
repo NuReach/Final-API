@@ -6,11 +6,19 @@ import socialLinksRoutes from "./routes/socialLinksRoutes.js";
 import shopImageRoutes from "./routes/shopImageRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import menuRoutes from "./routes/menuRoutes.js";
+import cors from "cors";
 
 const app = express();
 
 // Middleware
 app.use(express.json());
+
+app.use(
+  cors({
+    origin: "http://localhost:5173", // your frontend
+    credentials: true, // if you need cookies / auth headers
+  })
+);
 
 // Routes
 app.use("/api/test", testRoutes);
