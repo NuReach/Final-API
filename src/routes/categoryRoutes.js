@@ -18,5 +18,6 @@ router.post("/", authenticateUser, createCategory);
 router.put("/:id", authenticateUser, updateCategory);
 router.delete("/:id", authenticateUser, deleteCategory);
 router.patch("/reorder", authenticateUser, reorderCategories);
+router.get("/:shopId", authenticateUser, getCategories);
 
 export default router;

@@ -3,7 +3,7 @@ import supabase from "../config/supabase.js";
 // Create new category
 export const createCategory = async (req, res) => {
   try {
-    const { kh_name, en_name, zh_name, status } = req.body;
+    const { kh_name, en_name, zh_name, status, shop_id } = req.body;
 
     // Get the max order_index
     const { data: lastCategory } = await supabase
@@ -18,7 +18,14 @@ export const createCategory = async (req, res) => {
     const { data, error } = await supabase
       .from("categories")
       .insert([
-        { kh_name, en_name, zh_name, status, order_index: nextOrderIndex },
+        {
+          kh_name,
+          en_name,
+          zh_name,
+          status,
+          shop_id,
+          order_index: nextOrderIndex,
+        },
       ])
       .select();
 
@@ -31,23 +38,23 @@ export const createCategory = async (req, res) => {
     return res.status(400).json({ error: err.message });
   }
 };
-
-// Get all categories ordered
 export const getCategories = async (req, res) => {
   try {
+    const { shopId } = req.params; // shopId passed in URL
+
     const { data, error } = await supabase
       .from("categories")
       .select("*")
+      .eq("shop_id", shopId) // filter by shop
       .order("order_index", { ascending: true });
 
     if (error) throw error;
 
-    return res.status(200).json(data);
+    return res.status(200).json({ categories: data });
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
 };
-
 // Update category
 export const updateCategory = async (req, res) => {
   try {
@@ -90,14 +97,20 @@ export const reorderCategories = async (req, res) => {
   try {
     const { categories } = req.body; // [{ id, order_index }, ...]
 
-    // Update each category's order_index
+    // Step 1: Temporarily reset order_index to avoid unique constraint errors
     for (const cat of categories) {
-      const { error } = await supabase
+      await supabase
+        .from("categories")
+        .update({ order_index: -1 })
+        .eq("id", cat.id);
+    }
+
+    // Step 2: Apply the new order
+    for (const cat of categories) {
+      await supabase
         .from("categories")
         .update({ order_index: cat.order_index })
         .eq("id", cat.id);
-
-      if (error) throw error;
     }
 
     return res.status(200).json({ message: "Categories reordered" });
