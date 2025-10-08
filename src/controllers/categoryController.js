@@ -40,21 +40,39 @@ export const createCategory = async (req, res) => {
 };
 export const getCategories = async (req, res) => {
   try {
-    const { shopId } = req.params; // shopId passed in URL
+    const { shopId } = req.params;
 
-    const { data, error } = await supabase
+    // 1️⃣ Get all categories for this shop
+    const { data: categories, error: categoryError } = await supabase
       .from("categories")
       .select("*")
-      .eq("shop_id", shopId) // filter by shop
+      .eq("shop_id", shopId)
       .order("order_index", { ascending: true });
 
-    if (error) throw error;
+    if (categoryError) throw categoryError;
 
-    return res.status(200).json({ categories: data });
+    // 2️⃣ Get all menus (products) related to these categories
+    const categoryIds = categories.map((c) => c.id);
+
+    const { data: products, error: productError } = await supabase
+      .from("menus")
+      .select("*")
+      .in("category_id", categoryIds);
+
+    if (productError) throw productError;
+
+    // 3️⃣ Attach products to their categories
+    const categoriesWithProducts = categories.map((cat) => ({
+      ...cat,
+      products: products.filter((p) => p.category_id === cat.id),
+    }));
+
+    return res.status(200).json({ categories: categoriesWithProducts });
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
 };
+
 // Update category
 export const updateCategory = async (req, res) => {
   try {

@@ -1,146 +1,246 @@
 import { v4 as uuidv4 } from "uuid";
 import supabase from "../config/supabase.js";
 
-// ✅ Create Menu
 export const createMenu = async (req, res) => {
   try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
     const {
       name,
       price,
-      discount = 0,
+      discountPercentage,
       description,
       category_id,
       status,
+      shop_id,
     } = req.body;
-    const userId = req.user.id;
 
-    // Calculate final price
-    const final_price = price - discount;
+    console.log(req.body);
+    console.log(req.files);
 
     let imageUrl = null;
 
-    // Handle file upload if image exists
-    if (req.file) {
-      const fileExt = req.file.originalname.split(".").pop();
+    // --- MAIN IMAGE ---
+    if (req.files?.image?.[0]) {
+      const file = req.files.image[0];
+      const fileExt = file.originalname.split(".").pop();
       const fileName = `menus/${uuidv4()}.${fileExt}`;
 
+      // upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from("menu-images")
-        .upload(fileName, req.file.buffer, {
-          contentType: req.file.mimetype,
-        });
+        .upload(fileName, file.buffer, { contentType: file.mimetype });
 
-      if (uploadError)
+      if (uploadError) {
+        console.error("Main image upload error:", uploadError);
         return res.status(400).json({ error: uploadError.message });
+      }
 
-      const { data: publicUrl } = supabase.storage
+      // ✅ FIX: correctly get public URL
+      const { data } = supabase.storage
         .from("menu-images")
         .getPublicUrl(fileName);
-      imageUrl = publicUrl.publicUrl;
+      imageUrl = data.publicUrl;
     }
 
-    const { data, error } = await supabase
+    // --- INSERT MENU INTO DB ---
+    const { data: menuData, error: menuError } = await supabase
       .from("menus")
       .insert([
         {
           name,
           price,
-          discount,
+          discount: discountPercentage,
           description,
           category_id,
           status,
           image_url: imageUrl,
+          shop_id,
           user_id: userId,
         },
       ])
-      .select();
+      .select()
+      .single();
 
-    if (error) return res.status(400).json({ error: error.message });
+    if (menuError) return res.status(400).json({ error: menuError.message });
 
-    res.json({ message: "Menu created successfully", menu: data[0] });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+    const menuId = menuData.id;
 
-// ✅ Get All Menus
-export const getMenus = async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("menus")
-      .select("*, categories(name)");
-    if (error) return res.status(400).json({ error: error.message });
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+    // --- SUB IMAGES ---
+    const subImages = req.files?.subImages || [];
+    const subImageUrls = [];
 
-// ✅ Update Menu
-export const updateMenu = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const {
-      name,
-      price,
-      discount = 0,
-      description,
-      category_id,
-      status,
-    } = req.body;
-    const userId = req.user.id;
-
-    let imageUrl = null;
-
-    if (req.file) {
-      const fileExt = req.file.originalname.split(".").pop();
+    for (const file of subImages) {
+      const fileExt = file.originalname.split(".").pop();
       const fileName = `menus/${uuidv4()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from("menu-images")
-        .upload(fileName, req.file.buffer, {
-          contentType: req.file.mimetype,
-          upsert: true,
-        });
+        .upload(fileName, file.buffer, { contentType: file.mimetype });
 
-      if (uploadError)
-        return res.status(400).json({ error: uploadError.message });
+      if (uploadError) {
+        console.error("Sub-image upload error:", uploadError);
+        continue;
+      }
 
-      const { data: publicUrl } = supabase.storage
+      const { data } = supabase.storage
         .from("menu-images")
         .getPublicUrl(fileName);
-      imageUrl = publicUrl.publicUrl;
+      const publicUrl = data.publicUrl;
+
+      subImageUrls.push(publicUrl);
+
+      await supabase.from("menu_sub_images").insert({
+        menu_id: menuId,
+        image_url: publicUrl,
+      });
     }
 
-    const { data, error } = await supabase
+    return res.json({
+      message: "Menu created successfully ✅",
+      menu: {
+        ...menuData,
+        image_url: imageUrl,
+        sub_images: subImageUrls,
+      },
+    });
+  } catch (err) {
+    console.error("SERVER ERROR:", err);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+export const updateMenu = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const menuId = req.params.id;
+    if (!menuId) return res.status(400).json({ error: "Menu ID is required" });
+
+    const {
+      name,
+      price,
+      discountPercentage,
+      description,
+      category_id,
+      status,
+      shop_id,
+    } = req.body;
+
+    // --- GET EXISTING MENU ---
+    const { data: existingMenu, error: fetchError } = await supabase
+      .from("menus")
+      .select("*")
+      .eq("id", menuId)
+      .single();
+
+    if (fetchError) return res.status(400).json({ error: fetchError.message });
+    if (!existingMenu) return res.status(404).json({ error: "Menu not found" });
+
+    let imageUrl = existingMenu.image_url;
+
+    // --- UPDATE MAIN IMAGE IF NEW FILE PROVIDED ---
+    if (req.files?.image?.[0]) {
+      const file = req.files.image[0];
+      const fileExt = file.originalname.split(".").pop();
+      const fileName = `menus/${uuidv4()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("menu-images")
+        .upload(fileName, file.buffer, { contentType: file.mimetype });
+
+      if (uploadError) {
+        console.error("Main image upload error:", uploadError);
+        return res.status(400).json({ error: uploadError.message });
+      }
+
+      const { data } = supabase.storage
+        .from("menu-images")
+        .getPublicUrl(fileName);
+
+      imageUrl = data.publicUrl;
+    }
+
+    // --- UPDATE MENU RECORD ---
+    const { data: updatedMenu, error: updateError } = await supabase
       .from("menus")
       .update({
         name,
         price,
-        discount,
+        discount: discountPercentage,
         description,
         category_id,
         status,
-        ...(imageUrl && { image_url: imageUrl }),
+        image_url: imageUrl,
+        shop_id,
+        user_id: userId,
       })
-      .eq("id", id)
-      .eq("user_id", userId)
-      .select();
+      .eq("id", menuId)
+      .select()
+      .single();
 
-    if (error) return res.status(400).json({ error: error.message });
+    if (updateError)
+      return res.status(400).json({ error: updateError.message });
 
-    res.json({ message: "Menu updated successfully", menu: data[0] });
+    // --- ADD NEW SUB IMAGES ---
+    const subImages = req.files?.subImages || [];
+    const subImageUrls = [];
+
+    for (const file of subImages) {
+      const fileExt = file.originalname.split(".").pop();
+      const fileName = `menus/${uuidv4()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("menu-images")
+        .upload(fileName, file.buffer, { contentType: file.mimetype });
+
+      if (uploadError) {
+        console.error("Sub-image upload error:", uploadError);
+        continue;
+      }
+
+      const { data } = supabase.storage
+        .from("menu-images")
+        .getPublicUrl(fileName);
+      const publicUrl = data.publicUrl;
+
+      subImageUrls.push(publicUrl);
+
+      await supabase.from("menu_sub_images").insert({
+        menu_id: menuId,
+        image_url: publicUrl,
+      });
+    }
+
+    // --- GET ALL SUB IMAGES AFTER UPDATE ---
+    const { data: allSubImages } = await supabase
+      .from("menu_sub_images")
+      .select("image_url")
+      .eq("menu_id", menuId);
+
+    return res.json({
+      message: "Menu updated successfully ✅",
+      menu: {
+        ...updatedMenu,
+        image_url: imageUrl,
+        sub_images: allSubImages.map((img) => img.image_url),
+      },
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("SERVER ERROR:", err);
+    return res.status(500).json({ error: err.message });
   }
 };
 
 // ✅ Delete Menu
 export const deleteMenu = async (req, res) => {
   try {
-    const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
+    const { id } = req.params;
     const { error } = await supabase
       .from("menus")
       .delete()
@@ -150,6 +250,75 @@ export const deleteMenu = async (req, res) => {
     if (error) return res.status(400).json({ error: error.message });
 
     res.json({ message: "Menu deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ✅ Get Menus By Shop (protected)
+export const getMenusByShop = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { id: shopId } = req.params;
+
+    // Get the shop
+    const { data: shop, error: shopError } = await supabase
+      .from("shops")
+      .select("*")
+      .eq("id", shopId)
+      .single();
+
+    if (shopError) return res.status(404).json({ error: "Shop not found" });
+
+    // Get menus with category and sub-images
+    const { data: menus, error: menuError } = await supabase
+      .from("menus")
+      .select(
+        `
+        *,
+        categories:category_id(*),
+        subImages:menu_sub_images(*)
+      `
+      )
+      .eq("shop_id", shop.id)
+      .order("created_at", { ascending: true });
+
+    if (menuError) return res.status(400).json({ error: menuError.message });
+
+    res.json(menus);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ✅ Get Menus By ShopId (public)
+export const getMenusByShopIdPublic = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    console.log(shopId);
+
+    if (!shopId) return res.status(400).json({ error: "Shop ID is required" });
+
+    const { data: shop, error: shopError } = await supabase
+      .from("shops")
+      .select("id, name, logo, address")
+      .eq("id", shopId)
+      .single();
+
+    if (shopError || !shop)
+      return res.status(404).json({ error: "Shop not found" });
+
+    const { data: menus, error: menuError } = await supabase
+      .from("menus")
+      .select("*")
+      .eq("shop_id", shopId)
+      .order("created_at", { ascending: true });
+
+    if (menuError) return res.status(400).json({ error: menuError.message });
+
+    res.json(menus);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
