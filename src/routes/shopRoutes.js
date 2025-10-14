@@ -6,10 +6,13 @@ import {
   getUserShops,
   getShopById,
   updateShopCover,
+  getShopDetailsByName,
 } from "../controllers/shopController.js";
 import { upload } from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
+
+router.get("/menu/:shop_name", getShopDetailsByName);
 
 router.post("/", authenticateUser, upload.single("logo"), createShop);
 router.put("/:shopId", authenticateUser, upload.single("logo"), updateShop);

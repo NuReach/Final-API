@@ -246,3 +246,59 @@ export const updateShopCover = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
+
+const capitalizeWords = (str) =>
+  str.replace(/\b\w/g, (char) => char.toLowerCase());
+
+export const getShopDetailsByName = async (req, res) => {
+  try {
+    let param = req.params.shop_name;
+
+    // Step 1: Get shop by name (case-insensitive)
+    const { data: shop, error: shopError } = await supabase
+      .from("shops")
+      .select("*")
+      .ilike("name", `%${param}%`)
+      .single();
+
+    if (shopError || !shop) {
+      return res.status(404).json({ error: "Shop not found" });
+    }
+
+    // Step 2: Get categories by shop_id
+    const { data: categories, error: catError } = await supabase
+      .from("categories")
+      .select("*")
+      .eq("shop_id", shop.id)
+      .order("order_index", { ascending: true });
+
+    if (catError) throw catError;
+
+    // Step 3: Get menus by shop_id
+    const { data: menus, error: menuError } = await supabase
+      .from("menus")
+      .select("*")
+      .eq("shop_id", shop.id);
+
+    if (menuError) throw menuError;
+
+    const { data: socialLinks, error: socialError } = await supabase
+      .from("sociallinks")
+      .select("*")
+      .eq("shop_id", shop.id)
+      .single(); // ← ensures you only get one row
+
+    if (socialError && socialError.code !== "PGRST116") throw socialError;
+
+    // ✅ Return combined response
+    res.status(200).json({
+      shop,
+      categories,
+      menus,
+      socialLinks: socialLinks || null,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message || "Server error" });
+  }
+};

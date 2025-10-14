@@ -12,6 +12,7 @@ export const upsertSocialLinks = async (req, res) => {
       telegramlink,
       googlemaplink,
       phonenumber,
+      messengerlink,
     } = req.body;
 
     // Check if shop belongs to the user
@@ -38,6 +39,7 @@ export const upsertSocialLinks = async (req, res) => {
           telegramlink,
           googlemaplink,
           phonenumber,
+          messengerlink,
         },
         { onConflict: "shop_id" } // ensures 1 record per shop
       )

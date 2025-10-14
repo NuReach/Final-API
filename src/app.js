@@ -7,6 +7,7 @@ import shopImageRoutes from "./routes/shopImageRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import menuRoutes from "./routes/menuRoutes.js";
 import bannerRoutes from "./routes/bannerRoutes.js";
+import qrRoutes from "./routes/qrRoutes.js";
 import cors from "cors";
 
 const app = express();
@@ -30,5 +31,6 @@ app.use("/api/shop-images", shopImageRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/menus", menuRoutes);
 app.use("/api/banners", bannerRoutes);
+app.use("/api/qr", qrRoutes);
 
 export default app;

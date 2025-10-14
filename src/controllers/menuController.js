@@ -14,6 +14,7 @@ export const createMenu = async (req, res) => {
       category_id,
       status,
       shop_id,
+      tag,
     } = req.body;
 
     console.log(req.body);
@@ -58,6 +59,7 @@ export const createMenu = async (req, res) => {
           image_url: imageUrl,
           shop_id,
           user_id: userId,
+          tag: tag,
         },
       ])
       .select()
@@ -127,6 +129,7 @@ export const updateMenu = async (req, res) => {
       category_id,
       status,
       shop_id,
+      tag,
     } = req.body;
 
     // --- GET EXISTING MENU ---
@@ -176,6 +179,7 @@ export const updateMenu = async (req, res) => {
         image_url: imageUrl,
         shop_id,
         user_id: userId,
+        tag,
       })
       .eq("id", menuId)
       .select()
