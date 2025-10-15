@@ -60,6 +60,7 @@ export const createMenu = async (req, res) => {
           shop_id,
           user_id: userId,
           tag: tag,
+          clickCount: 0,
         },
       ])
       .select()
@@ -287,7 +288,7 @@ export const getMenusByShop = async (req, res) => {
       `
       )
       .eq("shop_id", shop.id)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false });
 
     if (menuError) return res.status(400).json({ error: menuError.message });
 
@@ -319,6 +320,75 @@ export const getMenusByShopIdPublic = async (req, res) => {
       .select("*")
       .eq("shop_id", shopId)
       .order("created_at", { ascending: true });
+
+    if (menuError) return res.status(400).json({ error: menuError.message });
+
+    res.json(menus);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const incrementMenuClick = async (req, res) => {
+  try {
+    const { id } = req.params; // menu ID
+    console.log("menu is click" + id);
+
+    if (!id) return res.status(400).json({ error: "Menu ID is required" });
+
+    const { data: menu, error: fetchError } = await supabase
+      .from("menus")
+      .select("clickCount")
+      .eq("id", id)
+      .single();
+
+    if (fetchError) return res.status(400).json({ error: fetchError.message });
+
+    const { data, error } = await supabase
+      .from("menus")
+      .update({ clickCount: menu.clickCount + 1 })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) return res.status(400).json({ error: error.message });
+
+    res.json({ message: "Click count incremented ✅", menu: data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getMenusByShopMostClicked = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { id: shopId } = req.params;
+
+    // Get the shop
+    const { data: shop, error: shopError } = await supabase
+      .from("shops")
+      .select("*")
+      .eq("id", shopId)
+      .single();
+
+    if (shopError || !shop)
+      return res.status(404).json({ error: "Shop not found" });
+
+    // Get menus with category and sub-images, ordered by clickCount descending
+    const { data: menus, error: menuError } = await supabase
+      .from("menus")
+      .select(
+        `
+        *,
+        categories:category_id(*),
+        subImages:menu_sub_images(*)
+      `
+      )
+      .eq("shop_id", shop.id)
+      .order("clickCount", { ascending: false })
+      .limit(4);
 
     if (menuError) return res.status(400).json({ error: menuError.message });
 

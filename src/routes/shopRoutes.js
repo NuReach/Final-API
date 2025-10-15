@@ -7,6 +7,9 @@ import {
   getShopById,
   updateShopCover,
   getShopDetailsByName,
+  trackShopVisit,
+  getShopVisitsLast6Months,
+  getShopAnalytics,
 } from "../controllers/shopController.js";
 import { upload } from "../middleware/uploadMiddleware.js";
 
@@ -25,4 +28,8 @@ router.put(
   updateShopCover
 );
 
+router.post("/track-visit", trackShopVisit);
+
+router.get("/:shop_name/visits", getShopVisitsLast6Months);
+router.get("/:shopId/analytics", getShopAnalytics);
 export default router;

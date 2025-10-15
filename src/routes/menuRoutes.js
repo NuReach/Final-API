@@ -5,6 +5,8 @@ import {
   deleteMenu,
   getMenusByShop,
   getMenusByShopIdPublic,
+  incrementMenuClick,
+  getMenusByShopMostClicked,
 } from "../controllers/menuController.js";
 import { authenticateUser } from "../middleware/authMiddleware.js";
 import { upload } from "../middleware/uploadMiddleware.js";
@@ -34,5 +36,11 @@ router.put(
 
 router.delete("/:id", authenticateUser, deleteMenu); // protected
 router.get("/shop/:id", authenticateUser, getMenusByShop); // protected
+router.post("/:id/click", incrementMenuClick);
+router.get(
+  "/shop/:id/most-clicked",
+  authenticateUser,
+  getMenusByShopMostClicked
+);
 
 export default router;

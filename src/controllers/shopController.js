@@ -302,3 +302,159 @@ export const getShopDetailsByName = async (req, res) => {
     res.status(500).json({ error: err.message || "Server error" });
   }
 };
+
+// Track shop visit (public)
+export const trackShopVisit = async (req, res) => {
+  try {
+    const { shop_name } = req.body;
+    const ip =
+      req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
+    const userAgent = req.headers["user-agent"];
+    console.log(shop_name, ip);
+
+    if (!shop_name) {
+      return res.status(400).json({ error: "Missing shop_name" });
+    }
+
+    // Find shop by name (case-insensitive)
+    const { data: shop, error: shopError } = await supabase
+      .from("shops")
+      .select("id, name")
+      .ilike("name", `%${shop_name}%`)
+      .single();
+
+    if (shopError || !shop)
+      return res.status(404).json({ error: "Shop not found" });
+
+    // Insert visit record
+    const { error } = await supabase.from("shop_visits").insert([
+      {
+        shop_id: shop.id,
+        shop_name: shop.name,
+        ip_address: ip,
+        user_agent: userAgent,
+      },
+    ]);
+
+    if (error) throw error;
+
+    res.status(201).json({ message: "Visit recorded successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getShopVisitsLast6Months = async (req, res) => {
+  try {
+    const { shop_name } = req.params;
+
+    // ⏰ Date range: last 6 months including current month
+    const currentDate = new Date();
+    const startDate = new Date();
+    startDate.setMonth(currentDate.getMonth() - 5);
+
+    // 🧭 Fetch all visit records for this shop in the time range
+    const { data, error } = await supabase
+      .from("shop_visits")
+      .select("visited_at")
+      .eq("shop_name", shop_name)
+      .gte("visited_at", startDate.toISOString());
+
+    if (error) throw error;
+
+    // 🗓️ Group visits by month-year
+    const monthlyCounts = {};
+
+    data.forEach((visit) => {
+      const date = new Date(visit.visited_at);
+      const monthKey = date.toLocaleString("default", {
+        month: "short",
+        year: "numeric",
+      }); // e.g., "Oct 2025"
+
+      monthlyCounts[monthKey] = (monthlyCounts[monthKey] || 0) + 1;
+    });
+
+    // 🔢 Ensure every month (last 6 months) is represented
+    const result = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const monthKey = d.toLocaleString("default", {
+        month: "short",
+        year: "numeric",
+      });
+
+      result.push({
+        month: monthKey,
+        visits: monthlyCounts[monthKey] || 0,
+      });
+    }
+
+    res.json({
+      shop_name,
+      last_6_months: result,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching shop visits:", err.message);
+    res.status(500).json({ error: "Failed to fetch shop visits" });
+  }
+};
+
+export const getShopAnalytics = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+
+    // 1️⃣ Get menu count
+    const { count: menuCount, error: menuError } = await supabase
+      .from("menus")
+      .select("*", { count: "exact", head: true })
+      .eq("shop_id", shopId);
+
+    if (menuError) throw menuError;
+
+    // 2️⃣ Get category count
+    const { count: categoryCount, error: catError } = await supabase
+      .from("categories")
+      .select("*", { count: "exact", head: true })
+      .eq("shop_id", shopId);
+
+    if (catError) throw catError;
+
+    // 3️⃣ Get total visits
+    const { count: visitCount, error: visitError } = await supabase
+      .from("shop_visits")
+      .select("*", { count: "exact", head: true })
+      .eq("shop_id", shopId);
+
+    if (visitError) throw visitError;
+
+    // 4️⃣ Get total clickers (sum of clickCount from menus)
+    const { data: clickData, error: clickError } = await supabase
+      .from("menus")
+      .select("clickCount")
+      .eq("shop_id", shopId);
+
+    if (clickError) throw clickError;
+
+    const totalClickers = clickData?.reduce(
+      (sum, item) => sum + (item.clickCount || 0),
+      0
+    );
+
+    // ✅ Combine results
+    res.status(200).json({
+      shopId,
+      analytics: {
+        totalMenus: menuCount || 0,
+        totalCategories: categoryCount || 0,
+        totalVisits: visitCount || 0,
+        totalClickers: totalClickers || 0,
+      },
+    });
+  } catch (err) {
+    console.error("Error fetching shop analytics:", err);
+    res.status(500).json({ error: err.message || "Failed to fetch analytics" });
+  }
+};
