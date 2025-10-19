@@ -282,6 +282,7 @@ export const getShopDetailsByName = async (req, res) => {
 
     if (menuError) throw menuError;
 
+    // Step 4: Get social links by shop_id
     const { data: socialLinks, error: socialError } = await supabase
       .from("sociallinks")
       .select("*")
@@ -290,12 +291,22 @@ export const getShopDetailsByName = async (req, res) => {
 
     if (socialError && socialError.code !== "PGRST116") throw socialError;
 
+    // Step 5: Get banners by shop_id
+    const { data: banners, error: bannersError } = await supabase
+      .from("banners")
+      .select("*")
+      .eq("shop_id", shop.id)
+      .single(); // ← ensures you only get one row
+
+    if (bannersError && bannersError.code !== "PGRST116") throw bannersError;
+
     // ✅ Return combined response
     res.status(200).json({
       shop,
       categories,
       menus,
       socialLinks: socialLinks || null,
+      banners: banners || null,
     });
   } catch (err) {
     console.error(err);
