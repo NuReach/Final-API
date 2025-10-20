@@ -148,3 +148,173 @@ export const logoutUser = async (req, res) => {
     return res.status(400).json({ error: err.message });
   }
 };
+
+// Request password reset - sends reset email
+export const requestPasswordReset = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    // Send password reset email
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.FRONTEND_URL}/reset-password`, // Configure your frontend reset URL
+    });
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      message:
+        "Password reset email sent successfully. Please check your inbox.",
+    });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+};
+
+// Update password with reset token
+export const resetPassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: "Authorization header missing" });
+    }
+
+    if (!password) {
+      return res.status(400).json({ error: "New password is required" });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        error: "Password must be at least 6 characters long",
+      });
+    }
+
+    const token = authHeader.split(" ")[1]; // "Bearer <token>"
+
+    // Update the user's password
+    const { data, error } = await supabase.auth.updateUser(
+      { password },
+      { accessToken: token }
+    );
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      message: "Password updated successfully",
+      user: data.user,
+    });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+};
+
+// Change password for authenticated user
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: "Authorization header missing" });
+    }
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        error: "Current password and new password are required",
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        error: "New password must be at least 6 characters long",
+      });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    // Get current user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+
+    // Verify current password by attempting to sign in
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
+
+    if (signInError) {
+      return res.status(400).json({ error: "Current password is incorrect" });
+    }
+
+    // Update to new password
+    const { data, error } = await supabase.auth.updateUser(
+      { password: newPassword },
+      { accessToken: token }
+    );
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      message: "Password changed successfully",
+      user: data.user,
+    });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+};
+
+// Update user name
+export const updateUserName = async (req, res) => {
+  try {
+    const { name } = req.body;
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: "Authorization header missing" });
+    }
+
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ error: "Name is required" });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    // Get current user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+
+    // Update name in profiles table
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ name: name.trim() })
+      .eq("id", user.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      message: "Name updated successfully",
+      user: data,
+    });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+};

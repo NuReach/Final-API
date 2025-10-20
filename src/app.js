@@ -24,6 +24,10 @@ app.use(
 );
 
 // Routes
+app.get("/api/", (req, res) => {
+  res.status(200).json({ message: "hello emenu" });
+});
+
 app.use("/api/test", testRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/shops", shopRoutes);
