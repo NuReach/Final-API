@@ -15,29 +15,35 @@ Follow these steps to deploy your API to Vercel:
 ### Option A: Using Vercel CLI (Fastest)
 
 1. **Install Vercel CLI**
+
 ```powershell
 npm install -g vercel
 ```
 
 2. **Login to Vercel**
+
 ```powershell
 vercel login
 ```
 
 3. **Deploy**
+
 ```powershell
 vercel
 ```
 
 4. **Add Environment Variables**
+
 ```powershell
 vercel env add SUPABASE_URL
 vercel env add SUPABASE_KEY
 vercel env add FRONTEND_URL
 ```
+
 (Enter the values when prompted)
 
 5. **Deploy to Production**
+
 ```powershell
 vercel --prod
 ```
@@ -49,6 +55,7 @@ vercel --prod
 ### Option B: Using GitHub + Vercel Dashboard
 
 1. **Push to GitHub**
+
 ```powershell
 git add .
 git commit -m "Deploy to Vercel"
@@ -56,11 +63,13 @@ git push origin main
 ```
 
 2. **Go to Vercel**
+
 - Visit: https://vercel.com/new
 - Import your GitHub repository
 - Click "Deploy"
 
 3. **Add Environment Variables**
+
 - Go to Project Settings → Environment Variables
 - Add:
   - `SUPABASE_URL`
@@ -68,6 +77,7 @@ git push origin main
   - `FRONTEND_URL`
 
 4. **Redeploy**
+
 - Go to Deployments → Click "Redeploy"
 
 ✅ **Done!** Your API is live!
@@ -92,8 +102,9 @@ curl https://your-project.vercel.app/api/
 ```
 
 Expected response:
+
 ```json
-{"message":"hello emenu"}
+{ "message": "hello emenu" }
 ```
 
 ## 🔧 Update CORS After Deployment
@@ -103,16 +114,14 @@ After you know your frontend URL, update `src/app.js`:
 ```javascript
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://your-frontend.vercel.app"
-    ],
+    origin: ["http://localhost:5173", "https://your-frontend.vercel.app"],
     credentials: true,
   })
 );
 ```
 
 Then redeploy:
+
 ```powershell
 git add .
 git commit -m "Update CORS"
@@ -124,6 +133,7 @@ git push origin main
 ## 🎉 You're Live!
 
 Your API endpoints:
+
 - Root: `https://your-project.vercel.app/api/`
 - Auth: `https://your-project.vercel.app/api/auth/...`
 - Shops: `https://your-project.vercel.app/api/shops/...`
