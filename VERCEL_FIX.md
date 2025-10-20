@@ -12,6 +12,7 @@
 ## 🚀 Deploy to Vercel - Updated Commands
 
 ### Step 1: Commit the Changes
+
 ```powershell
 git add .
 git commit -m "Fix Vercel deployment configuration"
@@ -21,6 +22,7 @@ git push origin main
 ### Step 2: Deploy to Vercel
 
 #### Option A: Using Vercel CLI
+
 ```powershell
 # If not installed yet
 npm install -g vercel
@@ -33,6 +35,7 @@ vercel
 ```
 
 When prompted:
+
 - Set up and deploy? **Y**
 - Which scope? **Select your account**
 - Link to existing project? **N** (or **Y** if you already created one)
@@ -40,6 +43,7 @@ When prompted:
 - In which directory is your code located? **./** (press Enter)
 
 #### Option B: Using Vercel Dashboard
+
 1. Go to https://vercel.com/dashboard
 2. Click "Add New Project"
 3. Import your GitHub repository
@@ -49,6 +53,7 @@ When prompted:
 ### Step 3: Add Environment Variables to Vercel
 
 **Via CLI:**
+
 ```powershell
 vercel env add SUPABASE_URL production
 # Paste: https://rkwxqswemzzhxxidvcex.supabase.co
@@ -62,6 +67,7 @@ vercel env add FRONTEND_URL production
 ```
 
 **Via Dashboard:**
+
 1. Go to your project on Vercel
 2. Click "Settings"
 3. Click "Environment Variables"
@@ -71,6 +77,7 @@ vercel env add FRONTEND_URL production
    - `FRONTEND_URL` = `https://your-frontend.vercel.app` or `*`
 
 ### Step 4: Deploy to Production
+
 ```powershell
 vercel --prod
 ```
@@ -120,26 +127,34 @@ curl https://your-project.vercel.app/api/auth/me
 ## 🔍 Troubleshooting
 
 ### Issue 1: "An unexpected error happened"
+
 ✅ **FIXED**: We created `api/index.js` as the proper entry point
 
 ### Issue 2: CORS errors
+
 ✅ **FIXED**: Updated CORS to use `FRONTEND_URL` environment variable
 
 ### Issue 3: Environment variables not working
+
 **Solution**: Make sure to redeploy after adding environment variables
+
 ```powershell
 vercel --prod
 ```
 
 ### Issue 4: Import errors
+
 **Solution**: Ensure all imports use `.js` extensions
+
 ```javascript
-import app from "./src/app.js";  // ✅ Correct
-import app from "./src/app";     // ❌ Wrong for ES modules
+import app from "./src/app.js"; // ✅ Correct
+import app from "./src/app"; // ❌ Wrong for ES modules
 ```
 
 ### Issue 5: Build still failing
+
 **Try these steps:**
+
 1. Delete the `.vercel` folder (if exists)
 2. Run `vercel --prod` again
 3. Check the build logs in Vercel dashboard
@@ -150,6 +165,7 @@ import app from "./src/app";     // ❌ Wrong for ES modules
 ## 📊 Vercel Logs
 
 To check deployment logs:
+
 ```powershell
 vercel logs
 ```
@@ -162,6 +178,7 @@ https://vercel.com/your-username/your-project/deployments
 ## ⚡ Local Development vs Production
 
 ### Local Development (localhost):
+
 ```powershell
 npm run dev
 # Uses src/server.js
@@ -169,6 +186,7 @@ npm run dev
 ```
 
 ### Production (Vercel):
+
 ```
 Uses api/index.js
 Runs as serverless function
@@ -191,6 +209,7 @@ git push origin main
 
 If connected to GitHub, Vercel auto-deploys.
 Or manually deploy:
+
 ```powershell
 vercel --prod
 ```
@@ -213,15 +232,18 @@ vercel --prod
 ## 🆘 Still Having Issues?
 
 1. **Check Vercel deployment logs**
+
    - Go to Vercel Dashboard → Your Project → Deployments
    - Click on the failed deployment
    - Check the build logs
 
 2. **Verify environment variables**
+
    - Vercel Dashboard → Settings → Environment Variables
    - Make sure all 3 variables are set
 
 3. **Test locally first**
+
    ```powershell
    npm run dev
    # Visit http://localhost:3000/api/
@@ -235,16 +257,19 @@ vercel --prod
 ## 🎉 Success!
 
 Your API should now be deployed successfully at:
+
 ```
 https://your-project-name.vercel.app
 ```
 
 Test it:
+
 ```powershell
 curl https://your-project-name.vercel.app/api/
 ```
 
 Expected response:
+
 ```json
-{"message":"hello emenu"}
+{ "message": "hello emenu" }
 ```
