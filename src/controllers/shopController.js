@@ -265,20 +265,22 @@ export const getShopDetailsByName = async (req, res) => {
       return res.status(404).json({ error: "Shop not found" });
     }
 
-    // Step 2: Get categories by shop_id
+    // Step 2: Get categories by shop_id (only available)
     const { data: categories, error: catError } = await supabase
       .from("categories")
       .select("*")
       .eq("shop_id", shop.id)
+      .eq("status", "available")
       .order("order_index", { ascending: true });
 
     if (catError) throw catError;
 
-    // Step 3: Get menus by shop_id
+    // Step 3: Get menus by shop_id (only available)
     const { data: menus, error: menuError } = await supabase
       .from("menus")
       .select("*")
-      .eq("shop_id", shop.id);
+      .eq("shop_id", shop.id)
+      .eq("status", "available");
 
     if (menuError) throw menuError;
 
