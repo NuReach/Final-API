@@ -16,9 +16,29 @@ const app = express();
 // Middleware
 app.use(express.json());
 
+// CORS configuration - allow multiple origins
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://www.emenukh.vip",
+  "https://www.emenukh.vip",
+  "http://emenukh.vip",
+  "https://emenukh.vip",
+];
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "*", // Allow all origins in development
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+
+      // Check if the origin is in the allowed list
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        // For development, allow all origins
+        callback(null, true);
+      }
+    },
     credentials: true, // if you need cookies / auth headers
   })
 );
